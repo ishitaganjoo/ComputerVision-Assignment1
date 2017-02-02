@@ -12,9 +12,9 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
-#include <SImage.h>
-#include <SImageIO.h>
-#include <fft.h>
+#include "SImage.h"
+#include "SImageIO.h"
+
 
 using namespace std;
 
@@ -25,93 +25,98 @@ using namespace std;
 //
 // Forward FFT transform: take input image, and return real and imaginary parts.
 //
-void fft(const SDoublePlane &input, SDoublePlane &fft_real, SDoublePlane &fft_imag)
-{
-  fft_real = input;
-  fft_imag = SDoublePlane(input.rows(), input.cols());
-
-  FFT_2D(1, fft_real, fft_imag);
-}
 
 // Inverse FFT transform: take real and imaginary parts of fourier transform, and return
 //  real-valued image.
 //
-void ifft(const SDoublePlane &input_real, const SDoublePlane &input_imag, SDoublePlane &output_real)
-{
-  output_real = input_real;
-  SDoublePlane output_imag = input_imag;
-
-  FFT_2D(0, output_real, output_imag);
-}
 
 // Write this in Part 1.1
-SDoublePlane fft_magnitude(const SDoublePlane &fft_real, const SDoublePlane &fft_imag);
 
-// Write this in Part 1.2
-SDoublePlane remove_interference(const SDoublePlane &input);
+SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &filter)
+{
+ cout<<"woohoooo\n";
+ SDoublePlane output(input.rows(), input.cols());
 
-// Write this in Part 1.3 -- add watermark N to image
-SDoublePlane mark_image(const SDoublePlane &input, int N);
-
-// Write this in Part 1.3 -- check if watermark N is in image
-SDoublePlane check_image(const SDoublePlane &input, int N);
+  cout<<"In the convolve general\n";
+  int HEIGHT = input.rows();
+  int WIDTH = input.cols();
+  for(int row = 1; row < HEIGHT-1; row++)
+  { 
+  	for(int col = 1; col < WIDTH-1; col++ ) 
+	{
+  		float accumulation = 0;
+  		float weightsum = 0; 
+  		for(int i = -1; i <= 1; i++ )
+		{
+    			for(int j = -1; j <= 1; j++ )
+			{
+      				double k = input[row+i][col+j];
+      				accumulation += k * filter[1-i][1-i];
+      				weightsum += filter[1-i][1-j];
+    			}
+  		}
+  		output[row][col] = (double)(accumulation/weightsum);
+	}
+  }
+  return output;
+}
 
 
 int main(int argc, char **argv)
 {
-  try {
+    string s = "cat.png";
+    string t = "tiger.png";
+	SDoublePlane image1 =  SImageIO::read_png_file(s.c_str());
+	SDoublePlane image2 =  SImageIO::read_png_file(t.c_str());
 
-    if(argc < 4)
-      {
-	cout << "Insufficent number of arguments; correct usage:" << endl;
-	cout << "    p2 problemID inputfile outputfile" << endl;
-	return -1;
-      }
-    
-    string part = argv[1];
-    string inputFile = argv[2];
-    string outputFile = argv[3];
-    cout << "In: " << inputFile <<"  Out: " << outputFile << endl;
-    
-    SDoublePlane input_image = SImageIO::read_png_file(inputFile.c_str());
-    
-    if(part == "1.1")
-      {
-	// do something here!
-      }
-    else if(part == "1.2")
-      {
-	// do something here!
-      }
-    else if(part == "1.3")
-      {
-	if(argc < 6)
-	  {
-	    cout << "Need 6 parameters for watermark part:" << endl;
-	    cout << "    p2 1.3 inputfile outputfile operation N" << endl;
-	    return -1;
-	  }
-	string op(argv[4]);
-	if(op == "add")
-	  {
-	    // add watermark
-	  }
-	else if(op == "check")
-	  {
-	    // check watermark
-	  }
-	else
-	  throw string("Bad operation!");
-       
-	int N = atoi(argv[5]);
-      }
-    else
-      throw string("Bad part!");
+	cout<<"Read the images\n";
+	SDoublePlane real1;
+	SDoublePlane real2;
+	
+	SDoublePlane imaginary1;
+	SDoublePlane imaginary2;
+	
+	//fft(image1,real1,imaginary1);
+	//fft(image2,real2,imaginary2);
 
-  } 
-  catch(const string &err) {
-    cerr << "Error: " << err << endl;
-  }
+	
+
+	SDoublePlane gaussian_filter = SDoublePlane(3,3);
+	gaussian_filter[0][0] = 0.0625;
+	gaussian_filter[0][1] = 0.125;
+	gaussian_filter[0][2] = 0.0625;
+	gaussian_filter[1][0] = 0.125;
+	gaussian_filter[1][1] = 0.25;
+	gaussian_filter[1][2] = 0.125;
+	gaussian_filter[2][0] = 0.0625;
+	gaussian_filter[2][1] = 0.125;
+	gaussian_filter[2][2] = 0.0625;
+	
+	cout<<gaussian_filter[0][0];
+
+	SDoublePlane lowPass = convolve_general(image1, gaussian_filter); //Applying gaussian filter, we get the image after low pass filtered
+
+	SDoublePlane highPass = convolve_general(image2, gaussian_filter);
+
+	cout<<"Applied Filters\n";
+	for(int i=0;i<image2.rows();i++)
+	{
+		for(int j=0;j<image2.cols();j++)
+		{
+			highPass[i][j] = image2[i][j] - highPass[i][j];
+		}
+	}
+
+	SDoublePlane merged(lowPass.rows(),lowPass.cols());
+	
+	for(int i=0;i<merged.rows();i++)
+	{
+		for(int j=0;j<merged.cols();j++)
+		{
+			merged[i][j] = (lowPass[i][j]+highPass[i][j])/2;
+		}
+	}
+	SImageIO::write_png_file("merged.png",merged,merged,merged);
 }
 
 
