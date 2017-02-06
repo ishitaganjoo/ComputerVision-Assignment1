@@ -100,34 +100,274 @@ void  write_detection_image(const string &filename, const vector<DetectedBox> &c
 //
 SDoublePlane convolve_separable(const SDoublePlane &input, const SDoublePlane &row_filter, const SDoublePlane &col_filter)
 {
-  SDoublePlane output(input.rows(), input.cols());
+  SDoublePlane output_1D(input.rows(), input.cols());
+  SDoublePlane output_final(input.rows(), input.cols());
 
+  SDoublePlane input_convolve(input.rows()+2, input.cols()+2);
+  int HEIGHT = input.rows();
+  int WIDTH = input.cols();
+  int height_inputC = input_convolve.rows();
+  int width_inputC = input_convolve.cols();
+  cout<<HEIGHT<<endl;
+  cout<<WIDTH<<endl;
+  cout<<height_inputC<<endl;
+  cout<<width_inputC<<endl;
+  for(int r = 1; r < HEIGHT-1 ; r++)
+  {
+   for(int c = 1; c < WIDTH-1 ; c++)
+   {
+      input_convolve[r][c] = input[r-1][c-1];
+   }
+  }
+  
+  for(int c=0; c < WIDTH; c++)
+  {
+     input_convolve[0][c+1] = input[0][c];
+     input_convolve[height_inputC-1][c+1] = input[HEIGHT-1][c];
+  }
+
+  for(int r = 0; r < HEIGHT; r++)
+  {
+     input_convolve[r+1][0] = input[r][0];
+     input_convolve[r+1][width_inputC-1] = input[r][WIDTH-1];
+  }
   // Convolution code here
   
-  return output;
+  for(int row = 1; row < height_inputC-1; row++)
+  { 
+    for(int col = 1; col < width_inputC-1; col++ ) 
+    {
+        float accumulation = 0;
+        float weightsum = 0; 
+        for(int i = -1; i <= 1; i++ )
+        {
+                    double k = input_convolve[row+i][col];
+                    accumulation += k * row_filter[1-i][0];
+                    weightsum += row_filter[1-i][0];
+        }
+        output_1D[row-1][col-1] = (double)(accumulation/weightsum);
+    }
+  }
+  
+                
+  for(int r = 1; r < HEIGHT-1 ; r++)
+  {
+   for(int c = 1; c < WIDTH-1 ; c++)
+   {
+      input_convolve[r][c] = output_1D[r-1][c-1];
+   }
+  }
+  
+  for(int c=0; c < WIDTH; c++)
+  {
+     input_convolve[0][c+1] = output_1D[0][c];
+     input_convolve[height_inputC-1][c+1] = output_1D[HEIGHT-1][c];
+  }
+
+  for(int r = 0; r < HEIGHT; r++)
+  {
+     input_convolve[r+1][0] = output_1D[r][0];
+     input_convolve[r+1][width_inputC-1] = output_1D[r][WIDTH-1];
+  }
+  // Convolution code here
+  
+  for(int row = 1; row < height_inputC-1; row++)
+  { 
+    for(int col = 1; col < width_inputC-1; col++ ) 
+    {
+        float accumulation = 0;
+        float weightsum = 0; 
+        for(int i = -1; i <= 1; i++ )
+        {
+                    double k = input_convolve[row][col+i];
+                    accumulation += k * col_filter[0][1-i];
+                    weightsum += col_filter[0][1-i];
+        }
+        output_final[row-1][col-1] = (double)(accumulation/weightsum);
+    }
+  }
+  cout<<"yayyyyyyyyyyy"<<endl; 
+  return output_final;
 }
 
 // Convolve an image with a  convolution kernel
 //
 SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &filter)
 {
-  SDoublePlane output(input.rows(), input.cols());
 
   // Convolution code here
+  SDoublePlane output(input.rows(), input.cols());
+  SDoublePlane input_convolve(input.rows()+2, input.cols()+2);
+  int HEIGHT = input.rows();
+  int WIDTH = input.cols();
+  int height_inputC = input_convolve.rows();
+  int width_inputC = input_convolve.cols();
+  cout<<HEIGHT<<endl;
+  cout<<WIDTH<<endl;
+  cout<<height_inputC<<endl;
+  cout<<width_inputC<<endl;
+  for(int r = 1; r < HEIGHT-1 ; r++)
+  {
+   for(int c = 1; c < WIDTH-1 ; c++)
+   {
+      input_convolve[r][c] = input[r-1][c-1];
+   }
+  }
   
+  for(int c=0; c < WIDTH; c++)
+  {
+     input_convolve[0][c+1] = input[0][c];
+     input_convolve[height_inputC-1][c+1] = input[HEIGHT-1][c];
+  }
+
+  for(int r = 0; r < HEIGHT; r++)
+  {
+     input_convolve[r+1][0] = input[r][0];
+     input_convolve[r+1][width_inputC-1] = input[r][WIDTH-1];
+  }
+  //Boundary pixel values:
+  input_convolve[0][0] = input[0][0];
+  input_convolve[0][width_inputC-1] = input[0][WIDTH-1];
+  input_convolve[height_inputC-1][0] = input[HEIGHT-1][0];
+  input_convolve[height_inputC-1][width_inputC-1] = input[HEIGHT-1][WIDTH-1];
+
+  cout<<"new image created"<<endl;
+
+  for(int row = 1; row < height_inputC-1; row++)
+  { 
+    for(int col = 1; col < width_inputC-1; col++ ) 
+    {
+        float accumulation = 0;
+        float weightsum = 0; 
+        for(int i = -1; i <= 1; i++ )
+        {
+                for(int j = -1; j <= 1; j++ )
+            {
+                    double k = input_convolve[row+i][col+j];
+                    accumulation += k * filter[1-i][1-j];
+                    weightsum += filter[1-i][1-j];
+                }
+        }
+        output[row-1][col-1] = (double)(accumulation/weightsum);
+    }
+  }
+  cout<<"convolution done"<<endl;  
   return output;
 }
+SDoublePlane reflectImage(const SDoublePlane &input)
+{
+  
+  SDoublePlane input_convolve(input.rows()+2, input.cols()+2);
+  int HEIGHT = input.rows();
+  int WIDTH = input.cols();
+  int height_inputC = input_convolve.rows();
+  int width_inputC = input_convolve.cols();
+  cout<<HEIGHT<<endl;
+  cout<<WIDTH<<endl;
+  cout<<height_inputC<<endl;
+  cout<<width_inputC<<endl;
+  for(int r = 1; r < HEIGHT-1 ; r++)
+  {
+   for(int c = 1; c < WIDTH-1 ; c++)
+   {
+      input_convolve[r][c] = input[r-1][c-1];
+   }
+  }
+  
+  for(int c=0; c < WIDTH; c++)
+  {
+     input_convolve[0][c+1] = input[0][c];
+     input_convolve[height_inputC-1][c+1] = input[HEIGHT-1][c];
+  }
 
+  for(int r = 0; r < HEIGHT; r++)
+  {
+     input_convolve[r+1][0] = input[r][0];
+     input_convolve[r+1][width_inputC-1] = input[r][WIDTH-1];
+  }
+  //Boundary pixel values:
+  input_convolve[0][0] = input[0][0];
+  input_convolve[0][width_inputC-1] = input[0][WIDTH-1];
+  input_convolve[height_inputC-1][0] = input[HEIGHT-1][0];
+  input_convolve[height_inputC-1][width_inputC-1] = input[HEIGHT-1][WIDTH-1];
+
+  cout<<"new image created"<<endl;
+  return input_convolve;
+}
+
+SDoublePlane outputGradientOperator(const SDoublePlane &input_convolve, const SDoublePlane &filter)
+{
+ int height_inputC = input_convolve.rows();
+ int width_inputC = input_convolve.cols();
+ SDoublePlane output = SDoublePlane(height_inputC-2, width_inputC-2);
+  for(int row = 1; row < height_inputC-1; row++)
+  { 
+    for(int col = 1; col < width_inputC-1; col++ ) 
+    {
+        float accumulation = 0;
+        float weightsum = 0; 
+        for(int i = -1; i <= 1; i++ )
+        {
+                for(int j = -1; j <= 1; j++ )
+            {
+                    double k = input_convolve[row+i][col+j];
+                    accumulation += k * filter[1+i][1+j];
+                    //weightsum += filter[1+i][1+j];
+                }
+        }
+        output[row-1][col-1] = (double)(accumulation);
+    }
+  }
+  cout<<"convolution done"<<endl;  
+  return output;
+}
 
 // Apply a sobel operator to an image, returns the result
 // 
 SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
 {
-  SDoublePlane output(input.rows(), input.cols());
-
+  int rows = input.rows();
+  int cols = input.cols();
+  SDoublePlane output(rows, cols);
+  SDoublePlane orientation(rows, cols);
   // Implement a sobel gradient estimation filter with 1-d filters
+  	SDoublePlane sobel_Gx = SDoublePlane(3,3);
+	SDoublePlane sobel_Gy = SDoublePlane(3,3);
+    sobel_Gx[0][0] = -1;
+    sobel_Gx[0][1] = 0;
+	sobel_Gx[0][2] = 1;
+	sobel_Gx[1][0] = -2;
+	sobel_Gx[1][1] = 0;
+	sobel_Gx[1][2] = 2;
+	sobel_Gx[2][0] = -1;
+	sobel_Gx[2][1] = 0;
+	sobel_Gx[2][2] = 1;
+	sobel_Gy[0][0] = -1;
+	sobel_Gy[0][1] = -2;
+	sobel_Gy[0][2] = -1;
+	sobel_Gy[1][0] = 0;
+	sobel_Gy[1][1] = 0;
+	sobel_Gy[1][2] = 0;
+	sobel_Gy[2][0] = 1;
+	sobel_Gy[2][1] = 2;
+	sobel_Gy[2][2] = 1;
+   
+  SDoublePlane input_convolve = reflectImage(input);
+  SDoublePlane output_Gx = outputGradientOperator(input_convolve, sobel_Gx);
+ 
+  SDoublePlane output_Gy = outputGradientOperator(input_convolve, sobel_Gy);
   
+  double pi = 3.14159265;
+  for(int r = 0; r < rows; r++)
+  {
+   for(int c = 0; c < cols; c++)
+   {
+      cout<<output_Gy[r][c]<<endl;
+      output[r][c] = sqrt (pow(output_Gx[r][c] , 2) + pow(output_Gy[r][c] , 2));
+      orientation[r][c] =  (atan(output_Gy[r][c]/output_Gx[r][c]) * 180 )/ pi; 
+   }
 
+  }
   return output;
 }
 
@@ -142,7 +382,6 @@ SDoublePlane find_edges(const SDoublePlane &input, double thresh=0)
   
   return output;
 }
-
 
 //
 // This main file just outputs a few test images. You'll want to change it to do 
@@ -164,11 +403,40 @@ int main(int argc, char *argv[])
   for(int i=0; i<3; i++)
     for(int j=0; j<3; j++)
       mean_filter[i][j] = 1/9.0;
-  SDoublePlane output_image = convolve_general(input_image, mean_filter);
-
   
+	SDoublePlane gaussian_filter = SDoublePlane(3,3);
+	gaussian_filter[0][0] = 0.0625;
+	gaussian_filter[0][1] = 0.125;
+	gaussian_filter[0][2] = 0.0625;
+	gaussian_filter[1][0] = 0.125;
+	gaussian_filter[1][1] = 0.25;
+	gaussian_filter[1][2] = 0.125;
+	gaussian_filter[2][0] = 0.0625;
+	gaussian_filter[2][1] = 0.125;
+	gaussian_filter[2][2] = 0.0625;
+  SDoublePlane output_image = convolve_general(input_image, gaussian_filter);
+
+  SImageIO::write_png_file("ConvolveGeneral.png",output_image,output_image,output_image);
   // randomly generate some detected cars -- you'll want to replace this
   //  with your car detection code obviously!
+
+  SDoublePlane separable_Hx = SDoublePlane(3,1);
+  SDoublePlane separable_Hy = SDoublePlane(1,3);
+  separable_Hx[0][0] = 0.25;
+  separable_Hx[1][0] = 0.5;
+  separable_Hx[2][0] = 0.25;
+
+  separable_Hy[0][0] = 0.25;
+  separable_Hy[0][1] = 0.5;
+  separable_Hy[0][2] = 0.25;
+
+  SDoublePlane output_image_sep = convolve_separable(input_image, separable_Hx, separable_Hy);
+  
+  SImageIO::write_png_file("ConvolveSeparable.png",output_image_sep,output_image_sep,output_image_sep);
+ 
+  SDoublePlane outputGxSobel = sobel_gradient_filter(output_image, true);
+
+  SImageIO::write_png_file("ConvolveSobelGx.png",outputGxSobel,outputGxSobel,outputGxSobel);
   vector<DetectedBox> cars;
   for(int i=0; i<10; i++)
     {
