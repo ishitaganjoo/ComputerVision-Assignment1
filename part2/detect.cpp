@@ -108,10 +108,7 @@ SDoublePlane convolve_separable(const SDoublePlane &input, const SDoublePlane &r
   int WIDTH = input.cols();
   int height_inputC = input_convolve.rows();
   int width_inputC = input_convolve.cols();
-  cout<<HEIGHT<<endl;
-  cout<<WIDTH<<endl;
-  cout<<height_inputC<<endl;
-  cout<<width_inputC<<endl;
+  
   for(int r = 1; r < HEIGHT-1 ; r++)
   {
    for(int c = 1; c < WIDTH-1 ; c++)
@@ -186,7 +183,6 @@ SDoublePlane convolve_separable(const SDoublePlane &input, const SDoublePlane &r
         output_final[row-1][col-1] = (double)(accumulation/weightsum);
     }
   }
-  cout<<"yayyyyyyyyyyy"<<endl; 
   return output_final;
 }
 
@@ -202,10 +198,7 @@ SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &fil
   int WIDTH = input.cols();
   int height_inputC = input_convolve.rows();
   int width_inputC = input_convolve.cols();
-  cout<<HEIGHT<<endl;
-  cout<<WIDTH<<endl;
-  cout<<height_inputC<<endl;
-  cout<<width_inputC<<endl;
+  
   for(int r = 1; r < HEIGHT-1 ; r++)
   {
    for(int c = 1; c < WIDTH-1 ; c++)
@@ -230,9 +223,6 @@ SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &fil
   input_convolve[0][width_inputC-1] = input[0][WIDTH-1];
   input_convolve[height_inputC-1][0] = input[HEIGHT-1][0];
   input_convolve[height_inputC-1][width_inputC-1] = input[HEIGHT-1][WIDTH-1];
-
-  cout<<"new image created"<<endl;
-
   for(int row = 1; row < height_inputC-1; row++)
   { 
     for(int col = 1; col < width_inputC-1; col++ ) 
@@ -251,7 +241,6 @@ SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &fil
         output[row-1][col-1] = (double)(accumulation/weightsum);
     }
   }
-  cout<<"convolution done"<<endl;  
   return output;
 }
 SDoublePlane reflectImage(const SDoublePlane &input)
@@ -262,10 +251,7 @@ SDoublePlane reflectImage(const SDoublePlane &input)
   int WIDTH = input.cols();
   int height_inputC = input_convolve.rows();
   int width_inputC = input_convolve.cols();
-  cout<<HEIGHT<<endl;
-  cout<<WIDTH<<endl;
-  cout<<height_inputC<<endl;
-  cout<<width_inputC<<endl;
+
   for(int r = 1; r < HEIGHT-1 ; r++)
   {
    for(int c = 1; c < WIDTH-1 ; c++)
@@ -291,7 +277,7 @@ SDoublePlane reflectImage(const SDoublePlane &input)
   input_convolve[height_inputC-1][0] = input[HEIGHT-1][0];
   input_convolve[height_inputC-1][width_inputC-1] = input[HEIGHT-1][WIDTH-1];
 
-  cout<<"new image created"<<endl;
+  //cout<<"new image created"<<endl;
   return input_convolve;
 }
 
@@ -318,18 +304,98 @@ SDoublePlane outputGradientOperator(const SDoublePlane &input_convolve, const SD
         output[row-1][col-1] = (double)(accumulation);
     }
   }
-  cout<<"convolution done"<<endl;  
+  //cout<<"convolution done"<<endl;  
   return output;
+}
+// Found edge 
+bool foundEdge(const SDoublePlane &output_after_nms, int window, int row, int col)
+{
+for (int r = row-window; r<=row+window; r++)
+{
+	for(int c = col-window; col<=col+window; c++)
+	{
+		if (output_after_nms[r][c] >= 190.0)
+			return true;
+	}
+}
+return false;
+
+}
+
+// Apply Hystersis thresholding
+
+void hysterisisThresholding(const SDoublePlane &output_after_nms, const SDoublePlane &output_hysterisis)
+{
+int height = output_after_nms.rows();
+int width = output_after_nms.cols();
+double low = 95.0, high = 190.0;
+ for (int r = 2; r< height - 2; r++)
+ {
+ 	for (int c = 2; c<width-2; c++)
+ 	{
+if (output_after_nms[r][c] >= high )
+	output_hysterisis[r][c] = output_after_nms[r][c];
+else if (output_after_nms[r][c] > low && output_after_nms[r][c] <high)
+{
+bool found = false;
+
+if (foundEdge(output_after_nms, 1, r, c))
+{
+	found = true;
+	output_hysterisis[r][c] = output_after_nms[r][c];
+}
+else  if (!found && foundEdge(output_after_nms, 2, r, c))
+{
+output_hysterisis[r][c] = output_after_nms[r][c];
+}
+
+
+}
+
+}
+}
+}
+
+// Apply Non Max Suppression
+void nonMaxSuppression(const SDoublePlane &output_after_nms, const SDoublePlane &output, const SDoublePlane &orientation)
+{
+ int height = output.rows();
+ int width = output.cols();
+ 
+ for (int r = 1; r< height - 1; r++)
+ {
+ 	for (int c = 1; c<width-1; c++)
+ 	{
+
+ 	double orient = orientation[r][c];
+ 	double magnitude = output[r][c];
+ 	if ((orient == 0) && magnitude >= max(output[r][c-1], output[r][c+1]))
+ 		output_after_nms[r][c] = magnitude;
+ 	else if ((orient == 45) && magnitude >= max( output[r+1][c-1], output[r-1][c+1]))
+ 		output_after_nms[r][c] = magnitude;
+
+ 	else if ((orient == 90) && magnitude >= max (output[r-1][c], output[r+1][c] ))
+ 		output_after_nms[r][c] = magnitude;
+    else if ((orient == 135) && magnitude >= max (output[r+1][c+1], output[r-1][c-1] ))
+ 		output_after_nms[r][c] = magnitude;
+ 	//cout << "output"<< output_after_nms[r][c];
+ 	//cout <<"\n";
+ 	
+ 	}
+ }
 }
 
 // Apply a sobel operator to an image, returns the result
 // 
+
 SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
 {
   int rows = input.rows();
   int cols = input.cols();
   SDoublePlane output(rows, cols);
   SDoublePlane orientation(rows, cols);
+  SDoublePlane output_after_nms = SDoublePlane(rows, cols);
+  SDoublePlane output_hysterisis = SDoublePlane(rows, cols);
   // Implement a sobel gradient estimation filter with 1-d filters
   	SDoublePlane sobel_Gx = SDoublePlane(3,3);
 	SDoublePlane sobel_Gy = SDoublePlane(3,3);
@@ -357,18 +423,52 @@ SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
  
   SDoublePlane output_Gy = outputGradientOperator(input_convolve, sobel_Gy);
   
-  double pi = 3.14159265;
-  for(int r = 0; r < rows; r++)
+  double pi = 180.0;
+  for(int r = 1; r < rows-1; r++)
   {
-   for(int c = 0; c < cols; c++)
+   for(int c = 1; c < cols-1; c++)
    {
-      cout<<output_Gy[r][c]<<endl;
       output[r][c] = sqrt (pow(output_Gx[r][c] , 2) + pow(output_Gy[r][c] , 2));
-      orientation[r][c] =  (atan(output_Gy[r][c]/output_Gx[r][c]) * 180 )/ pi; 
+      
+      
+     // output[r][c] = 0;  
+      double tangX = output_Gx[r][c];
+      double tangY = output_Gy[r][c];
+      double temp = 0.0;
+      temp = tangY/tangX;
+      if (temp < 0)
+      	temp = ((atan(temp)*180)/3.14 ) + 180;
+      else
+      	temp = ((atan(temp)*180)/3.14 );
+      if (temp >22.5 && temp <=67.5)
+      	temp = 45;
+      else if (temp > 67.5 && temp <=112.5)
+      	temp = 90;
+       else if (temp > 112.5 && temp <=157.5)
+      	temp = 135;
+      else if ((temp >157.5 && temp <=202.5) || (temp > 0 && temp <=22.5) || (temp > 337.5 && temp <=360) )
+      	temp = 0;
+      else if (temp > 202.5 && temp <=247.5)
+      	temp = 45;
+      else if (temp >247.5 && temp <=292.5)
+      	temp = 90;
+      else
+      	temp = 135;
+
+
+      	orientation[r][c] = temp;
+      	//cout<< orientation[r][c];
+      	//cout <<"\n";
    }
 
   }
-  return output;
+
+nonMaxSuppression(output_after_nms, output, orientation);
+
+hysterisisThresholding(output_after_nms, output_hysterisis);
+
+
+  return output_hysterisis;
 }
 
 // Apply an edge detector to an image, returns the binary edge map
@@ -376,10 +476,13 @@ SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
 SDoublePlane find_edges(const SDoublePlane &input, double thresh=0)
 {
   SDoublePlane output(input.rows(), input.cols());
-
+  output = sobel_gradient_filter(input, true);
+ 
+cout<<"Template created ";
   // Implement an edge detector of your choice, e.g.
   // use your sobel gradient operator to compute the gradient magnitude and threshold
-  
+  SDoublePlane outputEdges(input.rows(), input.cols());
+ // outputEdges = outputGradientOperator(output, template1);
   return output;
 }
 
@@ -417,6 +520,18 @@ int main(int argc, char *argv[])
   SDoublePlane output_image = convolve_general(input_image, gaussian_filter);
 
   SImageIO::write_png_file("ConvolveGeneral.png",output_image,output_image,output_image);
+
+	SDoublePlane output_image_blur = convolve_general(input_image, gaussian_filter_blur);
+    int height = input_image.rows();	
+     int width = input_image.cols();
+	SDoublePlane output_final  = SDoublePlane(height, width);
+	for(int i = 0; i<height; i++)
+	{
+		for (int j = 0; j<width; j++)
+			output_final[i][j] = output_image[i][j] - output_image_blur[i][j];
+	}
+
+  SImageIO::write_png_file("ConvolveGeneralBlur.png",output_final, output_final, output_final);
   // randomly generate some detected cars -- you'll want to replace this
   //  with your car detection code obviously!
 
@@ -433,22 +548,41 @@ int main(int argc, char *argv[])
   SDoublePlane output_image_sep = convolve_separable(input_image, separable_Hx, separable_Hy);
   
   SImageIO::write_png_file("ConvolveSeparable.png",output_image_sep,output_image_sep,output_image_sep);
- 
-  SDoublePlane outputGxSobel = sobel_gradient_filter(output_image, true);
+ int count = 0;
+    SDoublePlane output_image_demo = SDoublePlane(height, width);
+ while(count < 10)
+ { 
+ output_image_demo = convolve_general(input_image, gaussian_filter);
+    input_image = output_image_demo;
+ 	count ++;
+ }
+  SDoublePlane outputGxSobel = sobel_gradient_filter(output_image_demo, true);
 
   SImageIO::write_png_file("ConvolveSobelGx.png",outputGxSobel,outputGxSobel,outputGxSobel);
+
+  SDoublePlane outputEdges = find_edges(input_image);
   vector<DetectedBox> cars;
-  for(int i=0; i<10; i++)
+  bool found = false;
+ // for(int i=0; i<10; i++)
+  for (int i=0; i<outputEdges.rows(); i++) 
     {
+      for(int j=0; j<outputEdges.cols(); j++){
       DetectedBox s;
-      s.row = rand() % input_image.rows();
-      s.col = rand() % input_image.cols();
+      //if (outputEdges[i][j]  )
+     // s.row = rand() % input_image.rows();
+     // s.col = rand() % input_image.cols();
+      if (outputEdges[i][j] >0){
+      	s.row = i;
+      	s.col = j;
+      	
       s.width = 20;
-      s.height = 20;
+      s.height = 40;
       s.confidence = rand();
+  }
+
       cars.push_back(s);
     }
-
+ }
   write_detection_txt("detected.txt", cars);
   write_detection_image("detected.png", cars, input_image);
 }
