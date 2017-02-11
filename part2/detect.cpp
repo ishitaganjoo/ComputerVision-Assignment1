@@ -314,7 +314,7 @@ for (int r = row-window; r<=row+window; r++)
 {
 	for(int c = col-window; col<=col+window; c++)
 	{
-		if (output_after_nms[r][c] >= 190.0)
+		if (output_after_nms[r][c] >= 150.0)
 			return true;
 	}
 }
@@ -328,13 +328,15 @@ void hysterisisThresholding(const SDoublePlane &output_after_nms, const SDoubleP
 {
 int height = output_after_nms.rows();
 int width = output_after_nms.cols();
-double low = 95.0, high = 190.0;
+double low = 70.0, high = 150.0;
  for (int r = 2; r< height - 2; r++)
  {
  	for (int c = 2; c<width-2; c++)
  	{
 if (output_after_nms[r][c] >= high )
-	output_hysterisis[r][c] = output_after_nms[r][c];
+	//output_hysterisis[r][c] = output_after_nms[r][c];
+		output_hysterisis[r][c] = 255.0;
+
 else if (output_after_nms[r][c] > low && output_after_nms[r][c] <high)
 {
 bool found = false;
@@ -342,11 +344,14 @@ bool found = false;
 if (foundEdge(output_after_nms, 1, r, c))
 {
 	found = true;
-	output_hysterisis[r][c] = output_after_nms[r][c];
+	//output_hysterisis[r][c] = output_after_nms[r][c];
+	output_hysterisis[r][c] = 255.0;
 }
 else  if (!found && foundEdge(output_after_nms, 2, r, c))
 {
-output_hysterisis[r][c] = output_after_nms[r][c];
+//output_hysterisis[r][c] = output_after_nms[r][c];
+		output_hysterisis[r][c] = 255.0;
+
 }
 
 
@@ -475,16 +480,61 @@ hysterisisThresholding(output_after_nms, output_hysterisis);
 // 
 SDoublePlane find_edges(const SDoublePlane &input, double thresh=0)
 {
+   // Implement an edge detector of your choice, e.g.
+  // use your sobel gradient operator to compute the gradient magnitude and threshold
   SDoublePlane output(input.rows(), input.cols());
   output = sobel_gradient_filter(input, true);
  
-cout<<"Template created ";
-  // Implement an edge detector of your choice, e.g.
-  // use your sobel gradient operator to compute the gradient magnitude and threshold
-  SDoublePlane outputEdges(input.rows(), input.cols());
- // outputEdges = outputGradientOperator(output, template1);
+
   return output;
 }
+
+bool isCar(int r, int c, SDoublePlane &outputEdges){
+int countZeroes = 0;
+int countWhites = 0;
+
+//cout<< "in is car ";
+//cout <<"\n";
+//cout << r<<" "<<c<<endl;
+for(int i = c; i< c+26; i++)
+{
+if (outputEdges[r][i] == 0)
+countZeroes ++;
+if (outputEdges[r+45][i] == 0)
+countZeroes ++;
+	
+}
+for(int i = r; i< r+46; i++)
+
+{
+	if (outputEdges[i][c] == 0)
+countZeroes ++;
+if (outputEdges[i][c+25] == 0)
+countZeroes ++;
+
+}
+
+
+if (countZeroes > 50)
+{
+
+for(int i = r+1; i< r+45; i++)
+{
+	for(int j = c+1; j< c+25; j++)
+	{ 	
+		if (outputEdges[i][j] == 255)
+			countWhites ++;
+		
+	}
+}
+//cout << "Count of whites "<< countWhites<<endl;
+	if(countWhites > 110)
+		return true;
+}
+
+return false;
+}
+
 
 //
 // This main file just outputs a few test images. You'll want to change it to do 
@@ -521,20 +571,6 @@ int main(int argc, char *argv[])
 
   SImageIO::write_png_file("ConvolveGeneral.png",output_image,output_image,output_image);
 
-	SDoublePlane output_image_blur = convolve_general(input_image, gaussian_filter_blur);
-    int height = input_image.rows();	
-     int width = input_image.cols();
-	SDoublePlane output_final  = SDoublePlane(height, width);
-	for(int i = 0; i<height; i++)
-	{
-		for (int j = 0; j<width; j++)
-			output_final[i][j] = output_image[i][j] - output_image_blur[i][j];
-	}
-
-  SImageIO::write_png_file("ConvolveGeneralBlur.png",output_final, output_final, output_final);
-  // randomly generate some detected cars -- you'll want to replace this
-  //  with your car detection code obviously!
-
   SDoublePlane separable_Hx = SDoublePlane(3,1);
   SDoublePlane separable_Hy = SDoublePlane(1,3);
   separable_Hx[0][0] = 0.25;
@@ -549,6 +585,8 @@ int main(int argc, char *argv[])
   
   SImageIO::write_png_file("ConvolveSeparable.png",output_image_sep,output_image_sep,output_image_sep);
  int count = 0;
+ int height = input_image.rows();
+ int width = input_image.cols();
     SDoublePlane output_image_demo = SDoublePlane(height, width);
  while(count < 10)
  { 
@@ -560,29 +598,36 @@ int main(int argc, char *argv[])
 
   SImageIO::write_png_file("ConvolveSobelGx.png",outputGxSobel,outputGxSobel,outputGxSobel);
 
+  // randomly generate some detected cars -- you'll want to replace this
+  //  with your car detection code obviously!
+bool found = false;
   SDoublePlane outputEdges = find_edges(input_image);
   vector<DetectedBox> cars;
-  bool found = false;
- // for(int i=0; i<10; i++)
-  for (int i=0; i<outputEdges.rows(); i++) 
+  for(int r=0; r<height-38; r++)
     {
-      for(int j=0; j<outputEdges.cols(); j++){
+    found = false;
+    for(int c=0; c<width-18; c++){
       DetectedBox s;
-      //if (outputEdges[i][j]  )
-     // s.row = rand() % input_image.rows();
-     // s.col = rand() % input_image.cols();
-      if (outputEdges[i][j] >0){
-      	s.row = i;
-      	s.col = j;
-      	
-      s.width = 20;
-      s.height = 40;
-      s.confidence = rand();
-  }
+   	//cout <<"Check for the car"<<endl;
+   	//cout << r<<" "<<c<<endl;
+      if (isCar(r, c, outputEdges)){
+      	s.row = r+1;
+      	s.col = c+1;
+     	s.width = 20;
+      	s.height = 40;
+      	//cout << "add to car"<<endl;
+      	found = true;
+      	c += 20;
+      	s.confidence = rand();
+      	cars.push_back(s);
+    	 }
 
-      cars.push_back(s);
-    }
- }
+ 	}
+ 	//cout<<" Found CARSSSSSSSSSSSSSSSSSSSSSSSSS"<<endl;
+ 	if (found)
+ 		r += 40;
+    
+    	}
   write_detection_txt("detected.txt", cars);
   write_detection_image("detected.png", cars, input_image);
 }
