@@ -496,31 +496,32 @@ int countWhites = 0;
 //cout<< "in is car ";
 //cout <<"\n";
 //cout << r<<" "<<c<<endl;
-for(int i = c; i< c+26; i++)
+for(int i = c; i< c+22; i++)
 {
+//count the number of zeroes(black pixels) on the first and last row
 if (outputEdges[r][i] == 0)
 countZeroes ++;
-if (outputEdges[r+45][i] == 0)
+if (outputEdges[r+41][i] == 0)
 countZeroes ++;
 	
 }
-for(int i = r; i< r+46; i++)
+for(int i = r; i< r+42; i++)
 
 {
-	if (outputEdges[i][c] == 0)
+//count the number of zeroes(black pixels) on the first and last row
+if (outputEdges[i][c] == 0)
 countZeroes ++;
-if (outputEdges[i][c+25] == 0)
+if (outputEdges[i][c+21] == 0)
 countZeroes ++;
 
 }
-
 
 if (countZeroes > 50)
 {
 
-for(int i = r+1; i< r+45; i++)
+for(int i = r+1; i< r+41; i++)
 {
-	for(int j = c+1; j< c+25; j++)
+	for(int j = c+1; j< c+21; j++)
 	{ 	
 		if (outputEdges[i][j] == 255)
 			countWhites ++;
@@ -528,7 +529,7 @@ for(int i = r+1; i< r+45; i++)
 	}
 }
 //cout << "Count of whites "<< countWhites<<endl;
-	if(countWhites > 110)
+if(countWhites > 85)
 		return true;
 }
 
@@ -603,10 +604,10 @@ int main(int argc, char *argv[])
 bool found = false;
   SDoublePlane outputEdges = find_edges(input_image);
   vector<DetectedBox> cars;
-  for(int r=0; r<height-38; r++)
+  for(int r=0; r<height-42; r++)
     {
     found = false;
-    for(int c=0; c<width-18; c++){
+    for(int c=0; c<width-22; c++){
       DetectedBox s;
    	//cout <<"Check for the car"<<endl;
    	//cout << r<<" "<<c<<endl;
