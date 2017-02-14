@@ -3,9 +3,10 @@
 //
 // Based on skeleton code by D. Crandall, Spring 2017
 //
-// PUT YOUR NAMES HERE
-//
-//
+// Archana Molasi
+// Ishita Ganjoo
+// Md. Lisul Islam
+
 
 #include <SImage.h>
 #include <SImageIO.h>
@@ -134,15 +135,15 @@ SDoublePlane convolve_separable(const SDoublePlane &input, const SDoublePlane &r
   { 
     for(int col = 1; col < width_inputC-1; col++ ) 
     {
-        float accumulation = 0;
-        float weightsum = 0; 
+        float addNeighbours = 0;
+        float addFilter = 0; 
         for(int i = -1; i <= 1; i++ )
         {
                     double k = input_convolve[row+i][col];
-                    accumulation += k * row_filter[1-i][0];
-                    weightsum += row_filter[1-i][0];
+                    addNeighbours += k * row_filter[1-i][0];
+                    addFilter += row_filter[1-i][0];
         }
-        output_1D[row-1][col-1] = (double)(accumulation/weightsum);
+        output_1D[row-1][col-1] = (double)(addNeighbours/addFilter);
     }
   }
   
@@ -172,15 +173,15 @@ SDoublePlane convolve_separable(const SDoublePlane &input, const SDoublePlane &r
   { 
     for(int col = 1; col < width_inputC-1; col++ ) 
     {
-        float accumulation = 0;
-        float weightsum = 0; 
+        float addNeighbours = 0;
+        float addFilter = 0; 
         for(int i = -1; i <= 1; i++ )
         {
                     double k = input_convolve[row][col+i];
-                    accumulation += k * col_filter[0][1-i];
-                    weightsum += col_filter[0][1-i];
+                    addNeighbours += k * col_filter[0][1-i];
+                    addFilter += col_filter[0][1-i];
         }
-        output_final[row-1][col-1] = (double)(accumulation/weightsum);
+        output_final[row-1][col-1] = (double)(addNeighbours/addFilter);
     }
   }
   return output_final;
@@ -227,22 +228,24 @@ SDoublePlane convolve_general(const SDoublePlane &input, const SDoublePlane &fil
   { 
     for(int col = 1; col < width_inputC-1; col++ ) 
     {
-        float accumulation = 0;
-        float weightsum = 0; 
+        float addNeighbours = 0;
+        float addFilter = 0; 
         for(int i = -1; i <= 1; i++ )
         {
                 for(int j = -1; j <= 1; j++ )
             {
                     double k = input_convolve[row+i][col+j];
-                    accumulation += k * filter[1-i][1-j];
-                    weightsum += filter[1-i][1-j];
+                    addNeighbours += k * filter[1-i][1-j];
+                    addFilter += filter[1-i][1-j];
                 }
         }
-        output[row-1][col-1] = (double)(accumulation/weightsum);
+        output[row-1][col-1] = (double)(addNeighbours/addFilter);
     }
   }
   return output;
 }
+
+// Handle boundaries, by reflection.
 SDoublePlane reflectImage(const SDoublePlane &input)
 {
   
@@ -281,6 +284,7 @@ SDoublePlane reflectImage(const SDoublePlane &input)
   return input_convolve;
 }
 
+// FUnction to find x and y gradient for sobel operator.
 SDoublePlane outputGradientOperator(const SDoublePlane &input_convolve, const SDoublePlane &filter)
 {
  int height_inputC = input_convolve.rows();
@@ -290,24 +294,24 @@ SDoublePlane outputGradientOperator(const SDoublePlane &input_convolve, const SD
   { 
     for(int col = 1; col < width_inputC-1; col++ ) 
     {
-        float accumulation = 0;
-        float weightsum = 0; 
+        float addNeighbours = 0;
+        float addFilter = 0; 
         for(int i = -1; i <= 1; i++ )
         {
                 for(int j = -1; j <= 1; j++ )
             {
                     double k = input_convolve[row+i][col+j];
-                    accumulation += k * filter[1+i][1+j];
-                    //weightsum += filter[1+i][1+j];
+                    addNeighbours += k * filter[1+i][1+j];
                 }
         }
-        output[row-1][col-1] = (double)(accumulation);
+        output[row-1][col-1] = (double)(addNeighbours);
     }
   }
   //cout<<"convolution done"<<endl;  
   return output;
 }
-// Found edge 
+
+// Found edge used in hysterisis thresholding to detect weaker pixels connected to strong edge pixels.
 bool foundEdge(const SDoublePlane &output_after_nms, int window, int row, int col)
 {
 for (int r = row-window; r<=row+window; r++)
@@ -391,7 +395,7 @@ void nonMaxSuppression(const SDoublePlane &output_after_nms, const SDoublePlane 
 }
 
 // Apply a sobel operator to an image, returns the result
-// 
+// Call non max suppression, hysterisis thresholding.
 
 SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
 {
@@ -459,21 +463,14 @@ SDoublePlane sobel_gradient_filter(const SDoublePlane &input, bool _gx)
       	temp = 90;
       else
       	temp = 135;
-
-
       	orientation[r][c] = temp;
-      	//cout<< orientation[r][c];
-      	//cout <<"\n";
    }
 
   }
 
 nonMaxSuppression(output_after_nms, output, orientation);
-
 hysterisisThresholding(output_after_nms, output_hysterisis);
-
-
-  return output_hysterisis;
+return output_hysterisis;
 
 }
 
@@ -486,17 +483,15 @@ SDoublePlane find_edges(const SDoublePlane &input, double thresh=0)
   SDoublePlane output(input.rows(), input.cols());
   output = sobel_gradient_filter(input, true);
  
-
   return output;
 }
 
+
+// Check for a car within the window (r+41) * (c+21)
 int isCar(int r, int c, SDoublePlane &outputEdges){
 int countZeroes = 0;
 int countWhites = 0;
 
-//cout<< "in is car ";
-//cout <<"\n";
-//cout << r<<" "<<c<<endl;
 for(int i = c; i< c+22; i++)
 {
 //count the number of zeroes(black pixels) on the first and last row
@@ -612,9 +607,7 @@ bool found = false;
     found = false;
     for(int c=0; c<width-22; c++){
       DetectedBox s;
-   	//cout <<"Check for the car"<<endl;
-   	//cout << r<<" "<<c<<endl;
-   
+  
       int countWhites = isCar(r, c, outputEdges);
       
       if ( countWhites > 0){
@@ -632,7 +625,6 @@ bool found = false;
     	 }
 
  	}
- 	//cout<<" Found CARSSSSSSSSSSSSSSSSSSSSSSSSS"<<endl;
  	if (found)
  		r += 40;
     
