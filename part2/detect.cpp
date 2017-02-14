@@ -38,6 +38,8 @@ using namespace std;
 
 // Draws a rectangle on an image plane, using the specified gray level value and line width.
 //
+//While performing thresholding on the orientation matrix, we were inspired by the approach given in the citation below.
+//Citation : http://archive.cnx.org/contents/8c7ba4b9-d1c4-4c1d-8e52-b81fc680d07f@1/implementation-detect-position-of-drum-stick
 void overlay_rectangle(SDoublePlane &input, int _top, int _left, int _bottom, int _right, double graylevel, int width)
 {
   for(int w=-width/2; w<=width/2; w++) {
@@ -284,7 +286,7 @@ SDoublePlane reflectImage(const SDoublePlane &input)
   return input_convolve;
 }
 
-// FUnction to find x and y gradient for sobel operator.
+// Function to find x and y gradient for sobel operator.
 SDoublePlane outputGradientOperator(const SDoublePlane &input_convolve, const SDoublePlane &filter)
 {
  int height_inputC = input_convolve.rows();
@@ -514,7 +516,7 @@ countZeroes ++;
 
 if (countZeroes > 50)
 {
-
+//count the number of white pixels inside the rectangle
 for(int i = r+1; i< r+41; i++)
 {
 	for(int j = c+1; j< c+21; j++)
@@ -525,10 +527,11 @@ for(int i = r+1; i< r+41; i++)
 	}
 }
 //cout << "Count of whites "<< countWhites<<endl;
+//return the number of white pixels if it is greater than the threshold set by us
 if(countWhites > 85)
 		return countWhites;
 }
-
+//if the number of white pixels are less than the threshold, that indicates that the car is not present inside the sliding rectangle
 return 0;
 }
 
@@ -567,7 +570,7 @@ int main(int argc, char *argv[])
   SDoublePlane output_image = convolve_general(input_image, gaussian_filter);
 
   SImageIO::write_png_file("convolution_general.png",output_image,output_image,output_image);
-
+  //create two separable 1-d kernels:
   SDoublePlane separable_Hx = SDoublePlane(3,1);
   SDoublePlane separable_Hy = SDoublePlane(1,3);
   separable_Hx[0][0] = 0.25;
@@ -584,10 +587,11 @@ int main(int argc, char *argv[])
  int count = 0;
  int height = input_image.rows();
  int width = input_image.cols();
-    SDoublePlane output_image_demo = SDoublePlane(height, width);
+ SDoublePlane output_image_demo = SDoublePlane(height, width);
+ //apply gaussian filter multiple times to remove noise, as it gives better edges(according to our experimentation)
  while(count < 8)
  { 
- output_image_demo = convolve_general(input_image, gaussian_filter);
+    output_image_demo = convolve_general(input_image, gaussian_filter);
     input_image = output_image_demo;
  	count ++;
  }
@@ -601,13 +605,15 @@ bool found = false;
   SDoublePlane outputEdges = find_edges(output_image_demo);
   vector<DetectedBox> cars;
   int average = 0;
-     int count_average = 0;
+  int count_average = 0;
+  //detect cars in the image by sliding a rectangle of dimension 42*22 over the image obtained after edge detection
   for(int r=0; r<height-42; r++)
     {
     found = false;
     for(int c=0; c<width-22; c++){
       DetectedBox s;
-  
+    
+      //check if a car is present inside the rectangle given the current row and column pixel value
       int countWhites = isCar(r, c, outputEdges);
       
       if ( countWhites > 0){
@@ -628,8 +634,8 @@ bool found = false;
  	if (found)
  		r += 40;
     
-    	}
-    	average /= count_average;
+    }
+  average /= count_average;
   write_detection_txt("detected.txt", cars, average);
   write_detection_image("detected.png", cars, input_image);
 }
