@@ -67,12 +67,12 @@ public:
 };
 
 // Function that outputs the ascii detection output file
-void  write_detection_txt(const string &filename, const vector<DetectedBox> &cars)
+void  write_detection_txt(const string &filename, const vector<DetectedBox> &cars, int average)
 {
   ofstream ofs(filename.c_str());
 
   for(vector<DetectedBox>::const_iterator s=cars.begin(); s != cars.end(); ++s)
-    ofs << s->row << " " << s->col << " " << s->width << " " << s->height << " " << s->confidence << endl;
+    ofs << s->row << " " << s->col << " " << s->width << " " << s->height << " " << (s->confidence)/average << endl;
 }
 
 // Function that outputs a visualization of detected boxes
@@ -474,6 +474,7 @@ hysterisisThresholding(output_after_nms, output_hysterisis);
 
 
   return output_hysterisis;
+
 }
 
 // Apply an edge detector to an image, returns the binary edge map
@@ -489,7 +490,7 @@ SDoublePlane find_edges(const SDoublePlane &input, double thresh=0)
   return output;
 }
 
-bool isCar(int r, int c, SDoublePlane &outputEdges){
+int isCar(int r, int c, SDoublePlane &outputEdges){
 int countZeroes = 0;
 int countWhites = 0;
 
@@ -530,10 +531,10 @@ for(int i = r+1; i< r+41; i++)
 }
 //cout << "Count of whites "<< countWhites<<endl;
 if(countWhites > 85)
-		return true;
+		return countWhites;
 }
 
-return false;
+return 0;
 }
 
 
@@ -570,7 +571,7 @@ int main(int argc, char *argv[])
 	gaussian_filter[2][2] = 0.0625;
   SDoublePlane output_image = convolve_general(input_image, gaussian_filter);
 
-  SImageIO::write_png_file("ConvolveGeneral.png",output_image,output_image,output_image);
+  SImageIO::write_png_file("convolution_general.png",output_image,output_image,output_image);
 
   SDoublePlane separable_Hx = SDoublePlane(3,1);
   SDoublePlane separable_Hy = SDoublePlane(1,3);
@@ -584,12 +585,12 @@ int main(int argc, char *argv[])
 
   SDoublePlane output_image_sep = convolve_separable(input_image, separable_Hx, separable_Hy);
   
-  SImageIO::write_png_file("ConvolveSeparable.png",output_image_sep,output_image_sep,output_image_sep);
+  SImageIO::write_png_file("convolution_separable.png",output_image_sep,output_image_sep,output_image_sep);
  int count = 0;
  int height = input_image.rows();
  int width = input_image.cols();
     SDoublePlane output_image_demo = SDoublePlane(height, width);
- while(count < 10)
+ while(count < 8)
  { 
  output_image_demo = convolve_general(input_image, gaussian_filter);
     input_image = output_image_demo;
@@ -597,13 +598,15 @@ int main(int argc, char *argv[])
  }
   SDoublePlane outputGxSobel = sobel_gradient_filter(output_image_demo, true);
 
-  SImageIO::write_png_file("ConvolveSobelGx.png",outputGxSobel,outputGxSobel,outputGxSobel);
+  SImageIO::write_png_file("edges.png",outputGxSobel,outputGxSobel,outputGxSobel);
 
   // randomly generate some detected cars -- you'll want to replace this
   //  with your car detection code obviously!
 bool found = false;
-  SDoublePlane outputEdges = find_edges(input_image);
+  SDoublePlane outputEdges = find_edges(output_image_demo);
   vector<DetectedBox> cars;
+  int average = 0;
+     int count_average = 0;
   for(int r=0; r<height-42; r++)
     {
     found = false;
@@ -611,7 +614,12 @@ bool found = false;
       DetectedBox s;
    	//cout <<"Check for the car"<<endl;
    	//cout << r<<" "<<c<<endl;
-      if (isCar(r, c, outputEdges)){
+   
+      int countWhites = isCar(r, c, outputEdges);
+      
+      if ( countWhites > 0){
+      	count_average += 1;
+      	average += countWhites;
       	s.row = r+1;
       	s.col = c+1;
      	s.width = 20;
@@ -619,7 +627,7 @@ bool found = false;
       	//cout << "add to car"<<endl;
       	found = true;
       	c += 20;
-      	s.confidence = rand();
+      	s.confidence = countWhites;
       	cars.push_back(s);
     	 }
 
@@ -629,6 +637,7 @@ bool found = false;
  		r += 40;
     
     	}
-  write_detection_txt("detected.txt", cars);
+    	average /= count_average;
+  write_detection_txt("detected.txt", cars, average);
   write_detection_image("detected.png", cars, input_image);
 }
