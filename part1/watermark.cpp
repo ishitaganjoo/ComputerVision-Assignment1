@@ -4,8 +4,9 @@
 // Based on skeleton code by D. Crandall, Spring 2017
 //
 // PUT YOUR NAMES HERE
-//
-//
+// Archana Molasi
+// Ishita Ganjoo
+// Md. Lisul Islam
 
 //Link to the header file
 #include <ctime>
