@@ -20,10 +20,10 @@
 using namespace std;
 
 double PI = 3.14159;
-int l = 10;
+int l = 20;
 double r = 110.0;
 double alpha = 10.0;
-double t = 0.4;
+double t = -0.5;
 
 // This code requires that input be a *square* image, and that each dimension
 //  is a power of 2; i.e. that input.width() == input.height() == 2^k, where k
@@ -184,16 +184,20 @@ SDoublePlane mark_image(const SDoublePlane &input_image, int N)
 	SDoublePlane fft_imaginary(input_image.rows(), input_image.cols());
 	fft(input_image,fft_real,fft_imaginary);
 	
+	//double part = r/(l/2);
+	//int x,y;
 	for(int i=0;i<l/2;i++)
     	{
-        	float theta=(float)(i+1)*(360.0/l);
+		//y = part*i;
+		//x = (int)sqrt(r*r-y*y);
+        	float theta=(float)(i)*(360.0/l);
 		int x= (int)(r* cos((theta*PI)/180));
         	int y= (int)(r* sin((theta*PI)/180));
-		fft_real[cx+x][cy+y] = fft_real[cx+x][cy+y] + alpha*abs(fft_real[cx+x][cy+y])*v[i];
-		fft_real[cx-x][cy-y] = fft_real[cx-x][cy-y] + alpha*abs(fft_real[cx-x][cy-y])*v[i];
+		fft_real[cx+x][cy+y] = fft_real[cx+x][cy+y] + alpha*fabs(fft_real[cx+x][cy+y])*v[i];
+		fft_real[cx-x][cy-y] = fft_real[cx-x][cy-y] + alpha*fabs(fft_real[cx-x][cy-y])*v[i];
 		
-		fft_real[cx+x][cy-y] = fft_real[cx+x][cy-y] + alpha*abs(fft_real[cx+x][cy-y])*v[i+(l/2)];
-		fft_real[cx-x][cy+y] = fft_real[cx-x][cy+y] + alpha*abs(fft_real[cx-x][cy+y])*v[i+(l/2)];
+		fft_real[cx+x][cy-y] = fft_real[cx+x][cy-y] + alpha*fabs(fft_real[cx+x][cy-y])*v[i+(l/2)];
+		fft_real[cx-x][cy+y] = fft_real[cx-x][cy+y] + alpha*fabs(fft_real[cx-x][cy+y])*v[i+(l/2)];
 
 		//fft_real[cx+x][cy+y] = fft_real[cx-x][cy-y] = fft_real[cx+x][cy-y] = fft_real[cx-x][cy+y] = 20.0;
 	}
@@ -224,7 +228,7 @@ SDoublePlane mark_image(const SDoublePlane &input_image, int N)
 
 double getMean(double array[], int size)
 {
-         double sum = 0;
+         double sum = 0.0;
          for(int i = 0; i < size; i++)
          {
              sum += array[i];
@@ -237,16 +241,15 @@ double getStDDev(double array[], int size)
 {
     double mean = getMean(array,size);
     
-    double sum=0;
+    double sum = 0.0;
     for(int i = 0; i < size; i++)
     {
         sum += (array[i]-mean)*(array[i]-mean);
     }
-
     return sqrt(sum / size);
 }
 
-double getCovariance(double a[],double b[],double size)
+double getCovariance(double a[],double b[],int size)
 {
     double mean1 = getMean(a,size);
     double mean2 = getMean(b,size);
@@ -260,7 +263,7 @@ double getCovariance(double a[],double b[],double size)
 }
 
 
-double getCorrelation(double a[], double b[], double size)
+double getCorrelation(double a[], double b[],int size)
 {
     return (getCovariance(a,b,size)/(getStDDev(a,size)*getStDDev(b,size)));
 }
@@ -284,7 +287,7 @@ bool check_image(const SDoublePlane &input_image, int N)
     
     	for(int i=0;i<l/2;i++)
 	{
-        	float theta = (float)(i+1)*(360.0/l);
+        	float theta = (float)(i)*(360.0/l);
        		int x = r* cos((theta*PI)/180);
         	int y = r* sin((theta*PI)/180);
 
@@ -395,6 +398,24 @@ int main(int argc, char **argv)
 				SDoublePlane output_image(input_image.rows(), input_image.cols());
 				output_image = mark_image(input_image,N);
 				SImageIO::write_png_file(outputFile.c_str(),output_image,output_image,output_image);
+
+				/*int fp;
+				int total=0;
+				srand(time(NULL));
+				for(int i=0;i<10;i++) //10 runs
+				{
+					fp=0;
+            				int random = rand();
+					output_image = mark_image(input_image,random);
+					for(int j=0;j<100;j++)
+					{
+						if(check_image(output_image,rand()%1000))
+                                        		fp++;
+					}
+            				cout<<"i:"<<i+1<< ", N:"<<random<<", FP:"<<(double)fp/100<<endl;
+					total += fp;
+				}
+				cout<<total/(100.0*10)<<endl;*/
 	  		}
 			else if(op == "check")
 	  		{
